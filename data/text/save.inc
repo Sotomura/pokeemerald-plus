@@ -1,17 +1,17 @@
 	.align 2
 gText_ConfirmSave:: @ 82C87B4
-	.string "Would you like to save the game?$"
+	.string "Would you like to save your progress?$"
 
 gText_AlreadySavedFile:: @ 82C87D5
 	.string "There is already a saved file.\n"
 	.string "Is it okay to overwrite it?$"
 
 gText_SavingDontTurnOff:: @ 82C8810
-	.string "SAVING…\n"
-	.string "DON'T TURN OFF THE POWER.$"
+	.string "Now saving your Pokémon adventure…\n"
+	.string "Don't turn off the power.$"
 
 gText_PlayerSavedGame:: @ 82C8832
-	.string "{PLAYER} saved the game.$"
+	.string "You saved your progress!$"
 
 gText_DifferentSaveFile:: @ 82C8845
 	.string "WARNING!\p"
