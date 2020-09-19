@@ -1089,7 +1089,7 @@ static void BuyMenuSubtractMoney(u8 taskId)
 {
     IncrementGameStat(GAME_STAT_SHOPPED);
     RemoveMoney(&gSaveBlock1Ptr->money, gShopDataPtr->totalCost);
-    PlaySE(SE_SHOP);
+    PlaySE(SE_RG_SHOP);
     PrintMoneyAmountInMoneyBox(0, GetMoney(&gSaveBlock1Ptr->money), 0);
 
     if (gMartInfo.martType == MART_TYPE_NORMAL)
@@ -1106,12 +1106,24 @@ static void Task_ReturnToItemListAfterItemPurchase(u8 taskId)
 {
     s16 *data = gTasks[taskId].data;
 
-    if (JOY_NEW(A_BUTTON | B_BUTTON))
+    if (gMain.newKeys & (A_BUTTON | B_BUTTON))
     {
         PlaySE(SE_SELECT);
-        if (tItemId == ITEM_POKE_BALL && tItemCount > 9 && AddBagItem(ITEM_PREMIER_BALL, 1) == TRUE)
+        if ((ItemId_GetPocket(tItemId) == POCKET_POKE_BALLS) && tItemCount > 9 && AddBagItem(ITEM_PREMIER_BALL, tItemCount / 10) == TRUE)
         {
-            BuyMenuDisplayMessage(taskId, gText_ThrowInPremierBall, BuyMenuReturnToItemList);
+            if (tItemCount > 19)
+            {
+                BuyMenuDisplayMessage(taskId, gText_ThrowInPremierBalls, BuyMenuReturnToItemList);
+            }
+            else
+            {
+                BuyMenuDisplayMessage(taskId, gText_ThrowInPremierBall, BuyMenuReturnToItemList);
+            }
+        }
+        else if((ItemId_GetPocket(tItemId) == POCKET_TM_HM))
+        {
+            RedrawListMenu(tListTaskId);
+            BuyMenuReturnToItemList(taskId);
         }
         else
         {
