@@ -1,15 +1,18 @@
 gText_ObtainedTheItem:: @ 8272A78
-	.string "Obtained the {STR_VAR_2}!$"
+	.string "You obtained a {STR_VAR_2}!$"
+
+gText_ObtainedTheItems::
+	.string "You obtained {STR_VAR_1} {STR_VAR_2}!$"
 
 gText_TheBagIsFull:: @ 8272A89
 	.string "The BAG is full…$"
-
+	
 gText_PutItemInPocket:: @ 8272A9A
-	.string "{PLAYER} put away the {STR_VAR_2}\n"
-	.string "in the {STR_VAR_3} POCKET.$"
+	.string "You put the {STR_VAR_2} in \n"
+	.string "your Bag's {STR_VAR_3} pocket.$"
 
 gText_PlayerFoundOneItem:: @ 8272ABF
-	.string "{PLAYER} found one {STR_VAR_2}!$"
+	.string "You found one {STR_VAR_2}!$"
 
 gText_TooBadBagIsFull:: @ 8272AD0
 	.string "Too bad!\n"
