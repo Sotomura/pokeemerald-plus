@@ -144,8 +144,8 @@ const struct ContestWinner gDefaultContestWinners[] =
         .trainerId = 0xFFFF,
         .species = SPECIES_ELECTRIKE,
         .contestCategory = CONTEST_CATEGORY_CUTE,
-        .monName = _("ELECTER"),
-        .trainerName = _("EZRA"),
+        .monName = _("Electer"),
+        .trainerName = _("Ezra"),
         .contestRank = CONTEST_RANK_NORMAL
     },
     {
@@ -153,8 +153,8 @@ const struct ContestWinner gDefaultContestWinners[] =
         .trainerId = 0xFFFF,
         .species = SPECIES_TROPIUS,
         .contestCategory = CONTEST_CATEGORY_COOL,
-        .monName = _("TROPO"),
-        .trainerName = _("ALLAN"),
+        .monName = _("Tropo"),
+        .trainerName = _("Allan"),
         .contestRank = CONTEST_RANK_HYPER
     },
     {
@@ -162,8 +162,8 @@ const struct ContestWinner gDefaultContestWinners[] =
         .trainerId = 0xFFFF,
         .species = SPECIES_XATU,
         .contestCategory = CONTEST_CATEGORY_BEAUTY,
-        .monName = _("TUXA"),
-        .trainerName = _("JULIET"),
+        .monName = _("Tuxa"),
+        .trainerName = _("Juliet"),
         .contestRank = CONTEST_RANK_NORMAL
     },
     {
@@ -171,8 +171,8 @@ const struct ContestWinner gDefaultContestWinners[] =
         .trainerId = 0xFFFF,
         .species = SPECIES_PLUSLE,
         .contestCategory = CONTEST_CATEGORY_TOUGH,
-        .monName = _("PULSE"),
-        .trainerName = _("BAILY"),
+        .monName = _("Pulse"),
+        .trainerName = _("Baily"),
         .contestRank = CONTEST_RANK_MASTER
     },
     {
@@ -180,8 +180,8 @@ const struct ContestWinner gDefaultContestWinners[] =
         .trainerId = 0xFFFF,
         .species = SPECIES_SHUPPET,
         .contestCategory = CONTEST_CATEGORY_SMART,
-        .monName = _("SHUPUP"),
-        .trainerName = _("MELANY"),
+        .monName = _("Shupup"),
+        .trainerName = _("Melany"),
         .contestRank = CONTEST_RANK_SUPER
     },
     {
@@ -189,8 +189,8 @@ const struct ContestWinner gDefaultContestWinners[] =
         .trainerId = 0xFFFF,
         .species = SPECIES_ZANGOOSE,
         .contestCategory = CONTEST_CATEGORY_COOL,
-        .monName = _("GOOZAN"),
-        .trainerName = _("HANA"),
+        .monName = _("Goozan"),
+        .trainerName = _("Hana"),
         .contestRank = CONTEST_RANK_HYPER
     },
     {
@@ -833,8 +833,8 @@ const struct ContestPokemon gContestOpponents[] =
     },
     [CONTEST_OPPONENT_LIAM] = {
         .species = SPECIES_DELIBIRD,
-        .nickname = _("BIRDLY"),
-        .trainerName = _("LIAM"),
+        .nickname = _("Birdly"),
+        .trainerName = _("Liam"),
         .trainerGfxId = OBJ_EVENT_GFX_MAN_5,
         .aiFlags = CONTEST_AI_SET_8,
         .whichRank = CONTEST_RANK_NORMAL,
@@ -861,8 +861,8 @@ const struct ContestPokemon gContestOpponents[] =
     },
     [CONTEST_OPPONENT_MILO] = {
         .species = SPECIES_LARVITAR,
-        .nickname = _("TARVITAR"),
-        .trainerName = _("MILO"),
+        .nickname = _("Tarvitar"),
+        .trainerName = _("Milo"),
         .trainerGfxId = OBJ_EVENT_GFX_MANIAC,
         .aiFlags = CONTEST_AI_SET_9,
         .whichRank = CONTEST_RANK_NORMAL,
@@ -2793,8 +2793,8 @@ const struct ContestPokemon gContestOpponents[] =
     },
     [CONTEST_OPPONENT_CLARA] = {
         .species = SPECIES_TOGEPI,
-        .nickname = _("GEPITO"),
-        .trainerName = _("CLARA"),
+        .nickname = _("Gepito"),
+        .trainerName = _("Clara"),
         .trainerGfxId = OBJ_EVENT_GFX_WOMAN_2,
         .aiFlags = CONTEST_AI_SET_6,
         .whichRank = CONTEST_RANK_MASTER,
@@ -2821,8 +2821,8 @@ const struct ContestPokemon gContestOpponents[] =
     },
     [CONTEST_OPPONENT_JAKOB] = {
         .species = SPECIES_ESPEON,
-        .nickname = _("SPEON"),
-        .trainerName = _("JAKOB"),
+        .nickname = _("Speon"),
+        .trainerName = _("Jakob"),
         .trainerGfxId = OBJ_EVENT_GFX_PSYCHIC_M,
         .aiFlags = CONTEST_AI_SET_7,
         .whichRank = CONTEST_RANK_MASTER,
@@ -2849,8 +2849,8 @@ const struct ContestPokemon gContestOpponents[] =
     },
     [CONTEST_OPPONENT_TREY] = {
         .species = SPECIES_SLOWKING,
-        .nickname = _("SLOWGO"),
-        .trainerName = _("TREY"),
+        .nickname = _("Slowgo"),
+        .trainerName = _("Trey"),
         .trainerGfxId = OBJ_EVENT_GFX_SAILOR,
         .aiFlags = CONTEST_AI_SET_8,
         .whichRank = CONTEST_RANK_MASTER,
@@ -2877,8 +2877,8 @@ const struct ContestPokemon gContestOpponents[] =
     },
     [CONTEST_OPPONENT_LANE] = {
         .species = SPECIES_URSARING,
-        .nickname = _("URSING"),
-        .trainerName = _("LANE"),
+        .nickname = _("Ursaring"),
+        .trainerName = _("Lane"),
         .trainerGfxId = OBJ_EVENT_GFX_BLACK_BELT,
         .aiFlags = CONTEST_AI_SET_9,
         .whichRank = CONTEST_RANK_MASTER,

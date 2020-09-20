@@ -2266,7 +2266,7 @@ const struct BattleFrontierTrainer gBattleFrontierTrainers[FRONTIER_TRAINERS_COU
     },
     [FRONTIER_TRAINER_TRISTON] = {
         .facilityClass = FACILITY_CLASS_COLLECTOR,
-        .trainerName = _("TRISTON"),
+        .trainerName = _("Triston"),
         .speechBefore = {EC_WORD_I, EC_WORD_WOULD, EC_WORD_RATHER, EC_WORD_LOOK, EC_WORD_AT, EC_WORD_POKEMON},
         .speechWin = {EC_WORD_HUH_QUES, EC_WORD_YOU, EC_WORD_MEAN, EC_WORD_I, EC_WORD_WON, EC_WORD_QUES_EXCL},
         .speechLose = {EC_WORD_SEE, EC_WORD_QUES, 0xFFFF, EC_WORD_I, EC_WORD_ALWAYS, EC_WORD_LOSE},
