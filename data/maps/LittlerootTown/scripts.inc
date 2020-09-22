@@ -955,6 +955,7 @@ LittlerootTown_EventScript_GiveRunningShoes:: @ 81E8693
 	waitfanfare
 	setflag FLAG_SYS_POKENAV_GET
 	setflag FLAG_RECEIVED_POKENAV
+	setflag FLAG_RECEIVED_RUNNING_SHOES
 	msgbox LittlerootTown_Text_ExplainPokenav, MSGBOX_DEFAULT
 	msgbox LittlerootTown_Text_ComeHomeIfAnythingHappens, MSGBOX_DEFAULT
 	closemessage
@@ -984,15 +985,14 @@ LittlerootTown_Text_WearTheseRunningShoes: @ 81E87F0
 	.string "You're your father's child, all right.\n"
 	.string "You look good together with Pokémon!\p"
 	.string "Here, honey! If you're going out on an\n"
-	.string "adventure, wear these Running Shoes.\p"
-	.string "They'll put a zip in your step!$"
+	.string "adventure, take this with you.$"
 
 LittlerootTown_Text_ReceivedPokenav: @ 81E8925
 	.string "You received the Pokénav.$"
 
 LittlerootTown_Text_ExplainPokenav: @ 81E894F
 	.string "Mom: That's a Pokémon Navigator,\n"
-	.string "or Pokémon for short.\p"
+	.string "or Pokénav for short.\p"
 	.string "It's an essential tool for any\n"
 	.string "Trainer on an adventure.\p"
 	.string "It has a map of the Hoenn region.\p"

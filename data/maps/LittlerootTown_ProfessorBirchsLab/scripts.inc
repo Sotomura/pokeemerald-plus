@@ -556,6 +556,19 @@ EventScript_RegisterProfBirch:: @ 81FA2D2
 
 LittlerootTown_ProfessorBirchsLab_EventScript_MeetingPostRivalBattle:: @ 81FA2F8
 	msgbox LittlerootTown_ProfessorBirchsLab_Text_HeardYouBeatRivalTakePokedex, MSGBOX_DEFAULT
+	additem ITEM_EXP_SHARE
+	playfanfare MUS_RG_OBTAIN_KEY_ITEM
+	message LittlerootTown_ProfessorBirchsLab_Text_ReceivedExpShare
+	waitfanfare
+	msgbox LittlerootTown_ProfessorBirchsLab_Text_PutExpShareInBagPocket, MSGBOX_DEFAULT
+	closemessage
+	msgbox LittlerootTown_ProfessorBirchsLab_Text_ExpShareExplanation, MSGBOX_DEFAULT
+	setflag FLAG_SYS_POKEDEX_GET
+	special SetUnlockedPokedexFlags
+	setflag FLAG_RECEIVED_POKEDEX_FROM_BIRCH
+	setvar VAR_CABLE_CLUB_TUTORIAL_STATE, 1
+	setflag FLAG_SYS_MYSTERY_GIFT_ENABLE
+	setflag FLAG_SYS_MYSTERY_EVENT_ENABLE
 	closemessage
 	applymovement LOCALID_RIVAL, LittlerootTown_ProfessorBirchsLab_Movement_RivalApproachPlayer
 	waitmovement 0
@@ -601,6 +614,7 @@ LittlerootTown_ProfessorBirchsLab_EventScript_ReceivePokedex::
 	setflag FLAG_RECEIVED_POKEDEX_FROM_BIRCH
 	setvar VAR_CABLE_CLUB_TUTORIAL_STATE, 1
 	setflag FLAG_SYS_MYSTERY_GIFT_ENABLE
+	setflag FLAG_SYS_MYSTERY_EVENT_ENABLE
 	return
 
 LittlerootTown_ProfessorBirchsLab_EventScript_PokemonAwait:: @ 81FA3C4
@@ -817,18 +831,37 @@ LittlerootTown_ProfessorBirchsLab_Text_HeardYouBeatRivalTakePokedex: @ 81FAB22
 	.string "{RIVAL}'s been helping with my research\n"
 	.string "for a long time.\p"
 	.string "{RIVAL} has an extensive history as\n"
-	.string "a Trainer already.$"
+	.string "a Trainer already.\p"
+	.string "From here on out, the opportunities\n"
+	.string "and experiences you'll get as a\l"
+	.string "Trainer yourself will only increase!\p"
+	.string "Speaking of which, why not take this.$"
+
+LittlerootTown_ProfessorBirchsLab_Text_ReceivedExpShare:
+	.string "You obtained the Exp. Share!$"
+
+LittlerootTown_ProfessorBirchsLab_Text_PutExpShareInBagPocket:
+	.string "You put the Exp. Share in\n"
+	.string "your Bag's Key Items pocket.$"
+
+LittlerootTown_ProfessorBirchsLab_Text_ExpShareExplanation:
+	.string "Prof. Birch: Turn the Exp. Share on\n"
+	.string "and all the Pokémon on your team\l"
+	.string "will receive Exp. Points from battle.\p"
 
 LittlerootTown_ProfessorBirchsLab_Text_CountlessPokemonAwait: @ 81FAD6F
-	.string "Prof. Birch: Countless Pokémon\n"
-	.string "await you!\p"
+	.string "Prof. Birch: {PLAYER}, I invite you\n"
+	.string "to be the Trainer want to be!\p"
+	.string "Step out into the world of Pokémon,\n"
+	.string "gain experience as a Trainer, and seek\l"
+	.string "the countless Pokémon awaiting you!\p"
 	.string "Argh, I'm getting the itch to get out\n"
 	.string "and do fieldwork again!$"
 
 LittlerootTown_ProfessorBirchsLab_Text_MayGotPokedexTooTakeThese: @ 81FADD7
 	.string "May: Oh, wow, {PLAYER}{KUN}!\n"
-	.string "You got a Pokédex, too!\p"
-	.string "That's great! Just like me!\n"
+	.string "You've got a Pokédex, the Pokémon\l"
+	.string "from my Dad…\p"
 	.string "I've got something for you, too!$"
 
 LittlerootTown_ProfessorBirchsLab_Text_CatchCutePokemonWithPokeBalls: @ 81FAE40
@@ -848,9 +881,9 @@ LittlerootTown_ProfessorBirchsLab_Text_MayWhereShouldIGoNext: @ 81FAF08
 
 LittlerootTown_ProfessorBirchsLab_Text_BrendanGotPokedexTooTakeThese: @ 81FAF3F
 	.string "Brendan: Huh…\n"
-	.string "So you got a Pokédex, too.\p"
-	.string "Well then, here.\n"
-	.string "I'll give you these.$"
+	.string "So you got a Pokémon from my dad,\l"
+	.string "and a Pokédex…\p"
+	.string "I'll give you these, too.$"
 
 LittlerootTown_ProfessorBirchsLab_Text_CatchCoolPokemonWithPokeBalls: @ 81FAF8E
 	.string "Brendan: You know it's more fun to\n"
