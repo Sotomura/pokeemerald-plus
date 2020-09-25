@@ -84,6 +84,8 @@ gSpecialVars:: @ 81DBA0C
 	.4byte gSpecialVar_MonBoxPos
 	.4byte gSpecialVar_Unused_0x8014
 	.4byte gTrainerBattleOpponent_A
+	.4byte gSpecialVar_TextColor
+	.4byte gSpecialVar_PrevTextColor
 
 	.include "data/specials.inc"
 
@@ -1059,4 +1061,5 @@ Common_EventScript_LegendaryFlewAway:: @ 8273776
 	.include "data/scripts/test_signpost.inc"
 	.include "data/text/frontier_brain.inc"
 	.include "data/text/save.inc"
+	.include "data/text/new_game_intro.inc"
 	.include "data/text/birch_speech.inc"

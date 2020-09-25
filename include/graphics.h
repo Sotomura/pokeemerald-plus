@@ -4106,7 +4106,7 @@ extern const u32 gBattleFrontierGfx_PyramidBag[];
 extern const u32 gBattleFrontierGfx_PyramidBag_Pal[];
 extern const u32 gBattleFrontierGfx_PyramidBagTileMap[];
 extern const u32 gUnknown_08D9AF44[];
-extern const u16 gUnknown_0860F074[];
+extern const u16 gTMCaseMainWindowPalette[];
 
 extern const u32 gTitleScreenEmeraldVersionGfx[];
 extern const u32 gTitleScreenPressStartGfx[];

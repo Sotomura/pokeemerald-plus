@@ -25,6 +25,8 @@ bool8 gUnknown_03002F84;
 struct Struct_03002F90 gUnknown_03002F90;
 TextFlags gTextFlags;
 
+extern const struct OamData gOamData_AffineOff_ObjNormal_16x16;
+
 const u8 gFontHalfRowOffsets[] =
 {
     0x00, 0x01, 0x02, 0x00, 0x03, 0x04, 0x05, 0x03, 0x06, 0x07, 0x08, 0x06, 0x00, 0x01, 0x02, 0x00,
@@ -51,6 +53,9 @@ const u8 gUnusedFRLGBlankedDownArrow[] = INCBIN_U8("graphics/fonts/unused_frlg_b
 const u8 gUnusedFRLGDownArrow[] = INCBIN_U8("graphics/fonts/unused_frlg_down_arrow.4bpp");
 const u8 gDownArrowYCoords[] = { 0x0, 0x1, 0x2, 0x1 };
 const u8 gWindowVerticalScrollSpeeds[] = { 0x1, 0x2, 0x4, 0x0 };
+
+static const u8 sDoubleArrowTiles1[]       = INCBIN_U8("graphics/fonts/down_arrow_3.4bpp");
+static const u8 sDoubleArrowTiles2[]       = INCBIN_U8("graphics/fonts/down_arrow_4.4bpp");
 
 const struct GlyphWidthFunc gGlyphWidthFuncs[] =
 {
@@ -110,6 +115,30 @@ const u8 gMenuCursorDimensions[][2] =
     { 0x8,  0xF },
     { 0x8,  0x8 },
     { 0x0,  0x0 }
+};
+
+static const struct SpriteSheet sRGDownArrow[] =
+{
+    {sDoubleArrowTiles1, sizeof(sDoubleArrowTiles1), 0x8000},
+    {sDoubleArrowTiles2, sizeof(sDoubleArrowTiles2), 0x8000},
+    {NULL}
+};
+
+static const struct SpritePalette sUnknown_81EA6A4[] =
+{
+    {gTMCaseMainWindowPalette, 0x8000},
+    {NULL}
+};
+
+static const struct SpriteTemplate sUnknown_81EA6B4 =
+{
+    .tileTag = 0x8000,
+    .paletteTag = 0x8000,
+    .oam = &gOamData_AffineOff_ObjNormal_16x16,
+    .anims = gDummySpriteAnimTable,
+    .images = NULL,
+    .affineAnims = gDummySpriteAffineAnimTable,
+    .callback = sub_80062B0,
 };
 
 const u16 gFont9JapaneseGlyphs[] = INCBIN_U16("graphics/fonts/font9.hwjpnfont");
@@ -1526,6 +1555,55 @@ u8 RenderTextFont9(u8 *pixels, u8 fontId, u8 *str)
 
     RestoreTextColors(&colorBackup[0], &colorBackup[1], &colorBackup[2]);
     return 1;
+}
+
+
+void sub_80062B0(struct Sprite *sprite)
+{
+    if(sprite->data[0])
+    {
+        sprite->data[0]--;
+    }
+    else
+    {
+        sprite->data[0] = 8;
+        switch(sprite->data[1])
+        {
+            case 0:
+                sprite->pos2.y = 0;
+                break;
+            case 1:
+                sprite->pos2.y = 1;
+                break;
+            case 2:
+                sprite->pos2.y = 2;
+                break;
+            case 3:
+                sprite->pos2.y = 1;
+                sprite->data[1] = 0;
+                return;
+        }
+        sprite->data[1]++;
+    }
+}
+
+u8 CreateTextCursorSpriteForOakSpeech(u8 sheetId, u16 x, u16 y, u8 priority, u8 subpriority)
+{
+    u8 spriteId;
+    LoadSpriteSheet(&sRGDownArrow[sheetId & 1]);
+    LoadSpritePalette(sUnknown_81EA6A4);
+    spriteId = CreateSprite(&sUnknown_81EA6B4, x + 3, y + 4, subpriority);
+    gSprites[spriteId].oam.priority = (priority & 3);
+    gSprites[spriteId].oam.matrixNum = 0;
+    gSprites[spriteId].data[0] = 8;
+    return spriteId;
+}
+
+void sub_8006398(u8 spriteId)
+{
+    DestroySprite(&gSprites[spriteId]);
+    FreeSpriteTilesByTag(0x8000);
+    FreeSpritePaletteByTag(0x8000);
 }
 
 u8 DrawKeypadIcon(u8 windowId, u8 keypadIconId, u16 x, u16 y)

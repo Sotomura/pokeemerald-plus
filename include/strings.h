@@ -394,6 +394,18 @@ extern const u8 gText_DefaultNameTerra[];
 extern const u8 gText_DefaultNameLucy[];
 extern const u8 gText_DefaultNameHalie[];
 
+// controls info / adventure info
+extern const u8 gText_NewGame_HelpDocs1[];
+extern const u8 gText_NewGame_HelpDocs2[];
+extern const u8 gText_NewGame_HelpDocs3[];
+extern const u8 gText_NewGame_HelpDocs4[];
+extern const u8 gText_NewGame_HelpDocs5[];
+extern const u8 gText_NewGame_HelpDocs6[];
+extern const u8 gText_NewGame_HelpDocs7[];
+extern const u8 gText_NewGameAdventureIntro1[];
+extern const u8 gText_NewGameAdventureIntro2[];
+extern const u8 gText_NewGameAdventureIntro3[];
+
 extern const u8 gText_BirchInTrouble[];
 extern const u8 gText_ConfirmStarterChoice[];
 

@@ -54,13 +54,14 @@ static EWRAM_DATA struct Menu sMenu = {0};
 static EWRAM_DATA u16 sTileNum = 0;
 static EWRAM_DATA u8 sPaletteNum = 0;
 static EWRAM_DATA u8 sYesNoWindowId = 0;
+static EWRAM_DATA u8 sTopBarWindowId = 0;
 static EWRAM_DATA u8 sWindowId = 0;
 static EWRAM_DATA u16 sFiller = 0;  // needed to align
 static EWRAM_DATA bool8 sScheduledBgCopiesToVram[4] = {FALSE};
 static EWRAM_DATA u16 sTempTileDataBufferIdx = 0;
 static EWRAM_DATA void *sTempTileDataBuffer[0x20] = {NULL};
 
-const u16 gUnknown_0860F074[] = INCBIN_U16("graphics/interface/860F074.gbapal");
+const u16 gTMCaseMainWindowPalette[] = INCBIN_U16("graphics/interface/860F074.gbapal");
 
 static const u8 sTextSpeedFrameDelays[] = 
 { 
@@ -93,6 +94,8 @@ static const struct WindowTemplate sYesNo_WindowTemplates =
     .paletteNum = 15,
     .baseBlock = 0x125
 };
+
+static const u8 gUnknown_8456618[3] = {15, 1, 2};
 
 const u16 gUnknown_0860F0B0[] = INCBIN_U16("graphics/interface/860F0B0.gbapal");
 const u8 sTextColors[] = { TEXT_DYNAMIC_COLOR_6, TEXT_COLOR_WHITE, TEXT_COLOR_DARK_GREY };
@@ -427,32 +430,139 @@ void SetStandardWindowBorderStyle(u8 windowId, bool8 copyToVram)
     DrawStdFrameWithCustomTileAndPalette(windowId, copyToVram, STD_WINDOW_BASE_TILE_NUM, STD_WINDOW_PALETTE_NUM);
 }
 
+/*
+   The following functions are used for handling top bar window
+   in hall of fame screen and story mode screen before oak intro. 
+   However, you can still designate a yPos value to place that bar
+   as well as the bar width.
+   The xPos is simply computed according to width (always right aligned). 
+*/
+u8 CreateTopBarWindowLoadPalette(u8 bg, u8 width, u8 yPos, u8 palette, u16 baseTile)
+{
+    struct WindowTemplate window;
+
+    memset(&window, 0, sizeof(window));
+    if (bg > 3)
+        window.bg = 0;
+    else
+        window.bg = bg;
+    window.tilemapTop = yPos;
+    window.height = 2;
+    window.tilemapLeft = 0x1E - width;
+    window.width = width;
+    window.paletteNum = palette;
+    window.baseBlock = baseTile;
+    sTopBarWindowId = AddWindow(&window);
+    if (palette > 15)
+        palette = 15 * 16;
+    else
+        palette *= 16;
+    LoadPalette(stdpal_get(2), palette, 0x20);
+    return sTopBarWindowId;
+}
+
+void TopBarWindowPrintString(const u8 *string, u8 unused, bool8 copyToVram)
+{
+    s32 width;
+
+    if (sTopBarWindowId != 0xFF)
+    {
+        PutWindowTilemap(sTopBarWindowId);
+        FillWindowPixelBuffer(sTopBarWindowId, PIXEL_FILL(15));
+        width = GetStringWidth(0, string, 0);
+        AddTextPrinterParameterized3(sTopBarWindowId, 0, -20 - width, 1, gUnknown_8456618, 0, string);
+        if (copyToVram)
+            CopyWindowToVram(sTopBarWindowId, COPYWIN_BOTH);
+    }
+}
+
+void TopBarWindowPrintTwoStrings(const u8 *string, const u8 *string2, bool8 fgColorChooser, u8 unused, bool8 copyToVram)
+{
+    u8 color[3];
+    s32 fgColor, width;
+
+    if ( sTopBarWindowId != 0xFF )
+    {
+        if (fgColorChooser)
+        {
+            color[0] = 0;
+            color[1] = 1;
+            color[2] = 2;
+        }
+        else
+        {
+            color[0] = 15;
+            color[1] = 1;
+            color[2] = 2;
+        }
+
+        PutWindowTilemap(sTopBarWindowId);
+        FillWindowPixelBuffer(sTopBarWindowId, PIXEL_FILL(15));
+        if (string2)
+        {
+            width = GetStringWidth(0, string2, 0);
+            AddTextPrinterParameterized3(sTopBarWindowId, 0, -20 - width, 1, color, 0, string2);
+        }
+        AddTextPrinterParameterized4(sTopBarWindowId, 2, 4, 1, 0, 0, color, 0, string);
+        if (copyToVram)
+            CopyWindowToVram(sTopBarWindowId, COPYWIN_BOTH);
+    }
+}
+
+// not used
+static void CopyTopBarWindowToVram(void)
+{
+    if (sTopBarWindowId != 0xFF)
+        CopyWindowToVram(sTopBarWindowId, COPYWIN_BOTH);
+}
+
+void ClearTopBarWindow(void)
+{
+    if (sTopBarWindowId != 0xFF)
+    {
+        FillWindowPixelBuffer(sTopBarWindowId, PIXEL_FILL(15));
+        CopyWindowToVram(sTopBarWindowId, COPYWIN_BOTH);
+    }
+}
+
+void DestroyTopBarWindow(void)
+{
+    if (sTopBarWindowId != 0xFF)
+    {
+        FillWindowPixelBuffer(sTopBarWindowId, PIXEL_FILL(0));
+        ClearWindowTilemap(sTopBarWindowId);
+        CopyWindowToVram(sTopBarWindowId, COPYWIN_BOTH);
+        RemoveWindow(sTopBarWindowId);
+        sTopBarWindowId = 0xFF;
+    }
+}
+
 void sub_819786C(u8 windowId, bool8 copyToVram)
 {
     LoadMessageBoxGfx(windowId, DLG_WINDOW_BASE_TILE_NUM, DLG_WINDOW_PALETTE_NUM * 0x10);
     DrawDialogFrameWithCustomTileAndPalette(windowId, copyToVram, DLG_WINDOW_BASE_TILE_NUM, 0xF);
 }
 
-void sub_819789C(void)
+void Menu_LoadStdPal(void)
 {
-    LoadPalette(gUnknown_0860F074, STD_WINDOW_PALETTE_NUM * 0x10, 0x14);
+    LoadPalette(gTMCaseMainWindowPalette, STD_WINDOW_PALETTE_NUM * 0x10, 0x14);
 }
 
 void Menu_LoadStdPalAt(u16 offset)
 {
-    LoadPalette(gUnknown_0860F074, offset, 0x14);
+    LoadPalette(gTMCaseMainWindowPalette, offset, 0x14);
 }
 
 const u16 *sub_81978C8(void)
 {
-    return gUnknown_0860F074;
+    return gTMCaseMainWindowPalette;
 }
 
 u16 sub_81978D0(u8 colorNum)
 {
     if (colorNum > 15)
         colorNum = 0;
-    return gUnknown_0860F074[colorNum];
+    return gTMCaseMainWindowPalette[colorNum];
 }
 
 void DisplayItemMessageOnField(u8 taskId, const u8 *string, TaskFunc callback)
@@ -2168,4 +2278,51 @@ void BufferSaveMenuText(u8 textId, u8 *dest, u8 color)
             *endOfString = EOS;
             break;
     }
+}
+
+// ported from pokefirered
+static const u16 *GetTmCaseMainWindowPalette(void)
+{
+    return gTMCaseMainWindowPalette;
+}
+
+static u16 GetStdPalColor(u8 colorNum)
+{
+    if (colorNum > 0xF)
+        colorNum = 0;
+    return gTMCaseMainWindowPalette[colorNum];
+}
+
+void *MallocAndDecompress(const void *src, u32 *size)
+{
+    void *ptr;
+    u8 *sizeAsBytes = (u8 *)size;
+    const u8 *srcAsBytes = src;
+
+    sizeAsBytes[0] = srcAsBytes[1];
+    sizeAsBytes[1] = srcAsBytes[2];
+    sizeAsBytes[2] = srcAsBytes[3];
+    sizeAsBytes[3] = 0;
+
+    ptr = Alloc(*size);
+    if (ptr)
+        LZ77UnCompWram(src, ptr);
+    return ptr;
+}
+
+void ResetBg0(void)
+{
+    ChangeBgX(0, 0, 0);
+    ChangeBgY(0, 0, 0);
+    DeactivateAllTextPrinters();
+    // LoadStdWindowFrameGfx();
+    LoadMessageBoxAndBorderGfx();
+}
+
+u8 GetTextSpeedSetting(void)
+{
+    u32 speed;
+    if (gSaveBlock2Ptr->optionsTextSpeed > OPTIONS_TEXT_SPEED_FAST)
+        gSaveBlock2Ptr->optionsTextSpeed = OPTIONS_TEXT_SPEED_MID;
+    return sTextSpeedFrameDelays[gSaveBlock2Ptr->optionsTextSpeed];
 }

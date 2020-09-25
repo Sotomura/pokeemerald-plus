@@ -6,6 +6,7 @@
 #include "data.h"
 #include "decoration.h"
 #include "diploma.h"
+#include "dynamic_placeholder_text_util.h"
 #include "event_data.h"
 #include "event_object_movement.h"
 #include "fieldmap.h"

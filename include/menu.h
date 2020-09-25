@@ -32,7 +32,7 @@ struct MenuAction
     } func;
 };
 
-extern const u16 gUnknown_0860F074[];
+extern const u16 gTMCaseMainWindowPalette[];
 
 void FreeAllOverworldWindowBuffers(void);
 void InitStandardTextBoxWindows(void);
@@ -89,6 +89,11 @@ void ListMenuLoadStdPalAt(u8, u8);
 u8 Menu_MoveCursor(s8 cursorDelta);
 u8 Menu_MoveCursorNoWrapAround(s8 cursorDelta);
 void DrawStdWindowFrame(u8 windowId, bool8 CopyToVram);
+void TopBarWindowPrintTwoStrings(const u8 *string, const u8 *string2, bool8 fgColorChooser, u8 notUsed, bool8 copyToVram);
+void TopBarWindowPrintString(const u8 *string, u8 unUsed, bool8 copyToVram);
+void ClearTopBarWindow(void);
+void DestroyTopBarWindow(void);
+u8 CreateTopBarWindowLoadPalette(u8 bg, u8 width, u8 yPos, u8 palette, u16 baseTile);
 u8 sub_81979C4(u8 a1);
 u8 sub_81983AC(u8 windowId, u8 fontId, u8 left, u8 top, u8 cursorHeight, u8 numChoices, u8 initialCursorPos);
 void sub_819786C(u8 windowId, bool8 copyToVram);
@@ -116,5 +121,10 @@ void ResetBgPositions(void);
 void AddTextPrinterWithCustomSpeedForMessage(bool8 allowSkippingDelayWithButtonPress, u8 speed);
 void sub_8198C78(void);
 void PrintTextArray(u8 windowId, u8 fontId, u8 left, u8 top, u8 lineHeight, u8 itemCount, const struct MenuAction *strs);
+void Menu_LoadStdPal(void);
+
+void * MallocAndDecompress(const void * src, u32 * size);
+void ResetBg0(void);
+u8 GetTextSpeedSetting(void);
 
 #endif // GUARD_MENU_H

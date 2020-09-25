@@ -1,6 +1,6 @@
 #include "global.h"
+#include "gflib.h"
 #include "trainer_pokemon_sprites.h"
-#include "bg.h"
 #include "constants/rgb.h"
 #include "constants/songs.h"
 #include "constants/species.h"
@@ -19,7 +19,6 @@
 #include "naming_screen.h"
 #include "option_menu.h"
 #include "overworld.h"
-#include "palette.h"
 #include "pokeball.h"
 #include "pokedex.h"
 #include "pokemon.h"
@@ -27,16 +26,11 @@
 #include "rtc.h"
 #include "save.h"
 #include "scanline_effect.h"
-#include "sound.h"
-#include "sprite.h"
 #include "string.h"
 #include "strings.h"
-#include "string_util.h"
 #include "task.h"
-#include "text.h"
 #include "text_window.h"
 #include "title_screen.h"
-#include "window.h"
 #include "mystery_gift.h"
 
 /*
@@ -177,6 +171,24 @@ static EWRAM_DATA u16 sCurrItemAndOptionMenuCheck = 0;
 
 static u8 sBirchSpeechMainTaskId;
 
+struct OakSpeechResources
+{
+    void * solidColorsGfx;
+    void * trainerPicTilemapBuffer;
+    void * unk_0008;
+    u8 filler_000C[4];
+    u16 unk_0010;
+    u16 unk_0012;
+    u16 unk_0014[4];
+    u8 textColor[3];
+    u8 textSpeed;
+    u8 filler_0020[0x1800];
+    u8 bg2TilemapBuffer[0x400];
+    u8 bg1TilemapBuffer[0x800];
+}; //size=0x2420
+
+EWRAM_DATA struct OakSpeechResources * sOakSpeechResources = NULL;
+
 // Static ROM declarations
 
 static u32 InitMainMenu(bool8);
@@ -192,7 +204,17 @@ static void HighlightSelectedMainMenuItem(u8, u8, s16);
 static void Task_HandleMainMenuInput(u8);
 static void Task_HandleMainMenuAPressed(u8);
 static void Task_HandleMainMenuBPressed(u8);
+static void StartNewGameScene(void);
+static void Task_NewGame_Init(u8);
 static void Task_NewGameBirchSpeech_Init(u8);
+static void Task_ControlsInfo1(u8 taskId);
+static void CreateHelpDocsPage1(void);
+static void Task_ControlsInfo2(u8 taskId);
+static void Task_ControlsInfo3(u8 taskId);
+static void Task_AdventureInfoInit(u8 taskId);
+static void Task_AdventureInfoLoadState(u8 taskId);
+static void Task_AdventureInfo(u8 taskId);
+static void Task_TransitionFromAdventureInfo(u8 taskId);
 static void Task_DisplayMainMenuInvalidActionError(u8);
 static void AddBirchSpeechObjects(u8);
 static void Task_NewGameBirchSpeech_WaitToShowBirch(u8);
@@ -462,6 +484,25 @@ static const struct MenuAction sMenuActions_Gender[] = {
     {gText_BirchGirl, NULL}
 };
 
+static const u8 *const sNewGameAdventureIntroTextPointers[] = {
+    gText_NewGameAdventureIntro1,
+    gText_NewGameAdventureIntro2,
+    gText_NewGameAdventureIntro3
+};
+
+static const u8 *const sHelpDocsPtrs[] = {
+    gText_NewGame_HelpDocs2, gText_NewGame_HelpDocs3, gText_NewGame_HelpDocs4,
+    gText_NewGame_HelpDocs5, gText_NewGame_HelpDocs6, gText_NewGame_HelpDocs7
+};
+
+static const u8 sTextColor_HelpSystem[4] = {
+    0x00, 0x01, 0x02
+};
+
+static const u8 sTextColor_OakSpeech[4] = {
+    0x00, 0x02, 0x03
+};
+
 static const u8 *const gMalePresetNames[] = {
     gText_DefaultNameStu,
     gText_DefaultNameMilton,
@@ -576,7 +617,9 @@ static u32 InitMainMenu(bool8 returningFromOptionsMenu)
     DmaFill16(3, 0, (void *)(PLTT + 2), PLTT_SIZE - 2);
 
     ResetPaletteFade();
-    LoadPalette(sMainMenuBgPal, 0, 32);
+    if (gSaveFileStatus != SAVE_STATUS_EMPTY) {
+        LoadPalette(sMainMenuBgPal, 0, 32);
+    }
     LoadPalette(sMainMenuTextPal, 0xF0, 32);
     ScanlineEffect_Stop();
     ResetTasks();
@@ -722,7 +765,14 @@ static void Task_MainMenuCheckBattery(u8 taskId)
 
         if (!(RtcGetErrorStatus() & RTC_ERR_FLAG_MASK))
         {
-            gTasks[taskId].func = Task_DisplayMainMenu;
+            if(gTasks[taskId].tMenuType == HAS_NO_SAVED_GAME) {
+                gPlttBufferUnfaded[0] = RGB_BLACK;
+                gPlttBufferFaded[0] = RGB_BLACK;
+                gTasks[taskId].func = Task_ControlsInfo1;
+            }
+            else {
+                gTasks[taskId].func = Task_DisplayMainMenu;
+            }
         }
         else
         {
@@ -1065,7 +1115,7 @@ static void Task_HandleMainMenuAPressed(u8 taskId)
             default:
                 gPlttBufferUnfaded[0] = RGB_BLACK;
                 gPlttBufferFaded[0] = RGB_BLACK;
-                gTasks[taskId].func = Task_NewGameBirchSpeech_Init;
+                gTasks[taskId].func = Task_ControlsInfo1; // Task_NewGameBirchSpeech_Init
                 break;
             case ACTION_CONTINUE:
                 gPlttBufferUnfaded[0] = RGB_BLACK;
@@ -1268,18 +1318,675 @@ static void HighlightSelectedMainMenuItem(u8 menuType, u8 selectedMenuItem, s16 
 #define tBrendanSpriteId data[10]
 #define tMaySpriteId data[11]
 
+static void CreatePikaOrGrassPlatformSpriteAndLinkToCurrentTask(u8 taskId, u8 state);
+static void DestroyLinkedPikaOrGrassPlatformSprites(u8 taskId, u8 state);
+
+extern const u8 gText_Controls[];
+extern const u8 gText_Next[];
+extern const u8 gText_NextBack[];
+
+ALIGNED(4) static const u16 sHelpDocsPalette[] = INCBIN_U16("graphics/oak_speech/help_docs_palette.gbapal");
+static const u32 sOakSpeechGfx_GameStartHelpUI[] = INCBIN_U32("graphics/oak_speech/game_start_help_ui.4bpp.lz");
+static const u32 sNewGameAdventureIntroTilemap[] = INCBIN_U32("graphics/oak_speech/new_game_adventure_intro_tilemap.bin.lz");
+static const u32 sOakSpeechGfx_SolidColors[] = INCBIN_U32("graphics/oak_speech/solid_colors.4bpp.lz");
+static const u32 sOakSpeech_BackgroundTilemap[] = INCBIN_U32("graphics/oak_speech/background_tilemap.bin.lz");
+static const u16 sHelpDocsPage2Tilemap[] = INCBIN_U16("graphics/oak_speech/help_docs_page2_tilemap.bin");
+static const u16 sHelpDocsPage3Tilemap[] = INCBIN_U16("graphics/oak_speech/help_docs_page3_tilemap.bin");
+static const u16 sOakSpeech_PikaPalette[] = INCBIN_U16("graphics/oak_speech/pika_palette.gbapal");
+static const u32 sOakSpeechGfx_Pika1[] = INCBIN_U32("graphics/oak_speech/pika1.4bpp.lz");
+static const u32 sOakSpeechGfx_Pika2[] = INCBIN_U32("graphics/oak_speech/pika2.4bpp.lz");
+static const u32 sOakSpeechGfx_PikaEyes[] = INCBIN_U32("graphics/oak_speech/pika_eyes.4bpp.lz");
+
+static const struct BgTemplate sBgTemplates[3] = {
+    {
+        .bg = 0,
+        .charBaseIndex = 2,
+        .mapBaseIndex = 31,
+        .screenSize = 0,
+        .paletteMode = 0,
+        .priority = 0,
+        .baseTile = 0x000
+    }, {
+        .bg = 1,
+        .charBaseIndex = 0,
+        .mapBaseIndex = 30,
+        .screenSize = 0,
+        .paletteMode = 0,
+        .priority = 2,
+        .baseTile = 0x000
+    }, {
+        .bg = 2,
+        .charBaseIndex = 0,
+        .mapBaseIndex = 28,
+        .screenSize = 1,
+        .paletteMode = 1,
+        .priority = 1,
+        .baseTile = 0x000
+    }
+};
+
+static const struct WindowTemplate sHelpDocsWindowTemplates1[] = {
+    {
+        .bg = 0x00,
+        .tilemapLeft = 0x00,
+        .tilemapTop = 0x07,
+        .width = 0x1e,
+        .height = 0x04,
+        .paletteNum = 0x0f,
+        .baseBlock = 0x0001
+    }, DUMMY_WIN_TEMPLATE
+};
+
+static const struct WindowTemplate sHelpDocsWindowTemplates2[] = {
+    {
+        .bg = 0x00,
+        .tilemapLeft = 0x06,
+        .tilemapTop = 0x03,
+        .width = 0x18,
+        .height = 0x06,
+        .paletteNum = 0x0f,
+        .baseBlock = 0x0001
+    }, {
+        .bg = 0x00,
+        .tilemapLeft = 0x06,
+        .tilemapTop = 0x0a,
+        .width = 0x18,
+        .height = 0x04,
+        .paletteNum = 0x0f,
+        .baseBlock = 0x0092
+    }, {
+        .bg = 0x00,
+        .tilemapLeft = 0x06,
+        .tilemapTop = 0x0f,
+        .width = 0x18,
+        .height = 0x04,
+        .paletteNum = 0x0f,
+        .baseBlock = 0x00f3
+    }, DUMMY_WIN_TEMPLATE
+};
+
+static const struct WindowTemplate sHelpDocsWindowTemplates3[] = {
+    {
+        .bg = 0x00,
+        .tilemapLeft = 0x06,
+        .tilemapTop = 0x03,
+        .width = 0x18,
+        .height = 0x04,
+        .paletteNum = 0x0f,
+        .baseBlock = 0x0001
+    }, {
+        .bg = 0x00,
+        .tilemapLeft = 0x06,
+        .tilemapTop = 0x08,
+        .width = 0x18,
+        .height = 0x04,
+        .paletteNum = 0x0f,
+        .baseBlock = 0x0062
+    }, {
+        .bg = 0x00,
+        .tilemapLeft = 0x06,
+        .tilemapTop = 0x0d,
+        .width = 0x18,
+        .height = 0x06,
+        .paletteNum = 0x0f,
+        .baseBlock = 0x00c3
+    }, DUMMY_WIN_TEMPLATE
+};
+
+static const struct WindowTemplate *const sHelpDocsWindowTemplatePtrs[3] = {
+    sHelpDocsWindowTemplates1,
+    sHelpDocsWindowTemplates2,
+    sHelpDocsWindowTemplates3
+};
+
+static const struct WindowTemplate sNewGameAdventureIntroWindowTemplates[] = {
+    {
+        .bg = 0x00,
+        .tilemapLeft = 0x01,
+        .tilemapTop = 0x04,
+        .width = 0x1c,
+        .height = 0x0f,
+        .paletteNum = 0x0f,
+        .baseBlock = 0x0001
+    }, {
+        .bg = 0x00,
+        .tilemapLeft = 0x12,
+        .tilemapTop = 0x09,
+        .width = 0x09,
+        .height = 0x04,
+        .paletteNum = 0x0f,
+        .baseBlock = 0x0174
+    }, {
+        .bg = 0x00,
+        .tilemapLeft = 0x02,
+        .tilemapTop = 0x02,
+        .width = 0x06,
+        .height = 0x04,
+        .paletteNum = 0x0f,
+        .baseBlock = 0x0180
+    }, {
+        .bg = 0x00,
+        .tilemapLeft = 0x02,
+        .tilemapTop = 0x02,
+        .width = 0x0c,
+        .height = 0x0a,
+        .paletteNum = 0x0f,
+        .baseBlock = 0x0001
+    }, DUMMY_WIN_TEMPLATE
+};
+
+static const struct CompressedSpriteSheet sOakSpeech_PikaSpriteSheets[3] = {
+    { (const void *)sOakSpeechGfx_Pika1, 0x0400, 0x1001 },
+    { (const void *)sOakSpeechGfx_Pika2, 0x0200, 0x1002 },
+    { (const void *)sOakSpeechGfx_PikaEyes, 0x0080, 0x1003 },
+};
+
+static const struct SpritePalette sOakSpeech_PikaSpritePal = {
+    (const void *)sOakSpeech_PikaPalette, 0x1001
+};
+
+static const union AnimCmd sGrassPlatformAnim1[] = {
+    ANIMCMD_FRAME( 0, 0),
+    ANIMCMD_END
+};
+
+static const union AnimCmd sGrassPlatformAnim2[] = {
+    ANIMCMD_FRAME(16, 0),
+    ANIMCMD_END
+};
+
+static const union AnimCmd sGrassPlatformAnim3[] = {
+    ANIMCMD_FRAME(32, 0),
+    ANIMCMD_END
+};
+
+static const union AnimCmd *const sGrassPlatformAnims1[] = {
+    sGrassPlatformAnim1
+};
+static const union AnimCmd *const sGrassPlatformAnims2[] = {
+    sGrassPlatformAnim2
+};
+static const union AnimCmd *const sGrassPlatformAnims3[] = {
+    sGrassPlatformAnim3
+};
+
+extern const struct OamData gOamData_AffineOff_ObjBlend_32x32;
+
+static const struct SpriteTemplate sOakSpeech_GrassPlatformSpriteTemplates[3] = {
+    { 0x1000, 0x1000, &gOamData_AffineOff_ObjBlend_32x32, sGrassPlatformAnims1, NULL, gDummySpriteAffineAnimTable, SpriteCallbackDummy },
+    { 0x1000, 0x1000, &gOamData_AffineOff_ObjBlend_32x32, sGrassPlatformAnims2, NULL, gDummySpriteAffineAnimTable, SpriteCallbackDummy },
+    { 0x1000, 0x1000, &gOamData_AffineOff_ObjBlend_32x32, sGrassPlatformAnims3, NULL, gDummySpriteAffineAnimTable, SpriteCallbackDummy },
+};
+
+static const union AnimCmd sPikaAnim1[] = {
+    ANIMCMD_FRAME( 0, 30),
+    ANIMCMD_FRAME(16, 30),
+    ANIMCMD_JUMP(0)
+};
+
+static const union AnimCmd sPikaAnim2[] = {
+    ANIMCMD_FRAME(0, 60),
+    ANIMCMD_FRAME(0, 60),
+    ANIMCMD_FRAME(0, 60),
+    ANIMCMD_FRAME(0, 60),
+    ANIMCMD_FRAME(0, 60),
+    ANIMCMD_FRAME(0, 60),
+    ANIMCMD_FRAME(8, 12),
+    ANIMCMD_FRAME(0, 12),
+    ANIMCMD_FRAME(8, 12),
+    ANIMCMD_FRAME(0, 60),
+    ANIMCMD_FRAME(0, 60),
+    ANIMCMD_FRAME(0, 60),
+    ANIMCMD_FRAME(8, 12),
+    ANIMCMD_FRAME(0, 12),
+    ANIMCMD_FRAME(8, 12),
+    ANIMCMD_JUMP(0)
+};
+
+static const union AnimCmd sPikaAnim3[] = {
+    ANIMCMD_FRAME(0, 60),
+    ANIMCMD_FRAME(0, 60),
+    ANIMCMD_FRAME(0, 60),
+    ANIMCMD_FRAME(0, 60),
+    ANIMCMD_FRAME(0, 60),
+    ANIMCMD_FRAME(2,  8),
+    ANIMCMD_FRAME(0,  8),
+    ANIMCMD_FRAME(2,  8),
+    ANIMCMD_FRAME(0, 60),
+    ANIMCMD_FRAME(0, 60),
+    ANIMCMD_FRAME(0, 60),
+    ANIMCMD_FRAME(2,  8),
+    ANIMCMD_FRAME(0,  8),
+    ANIMCMD_FRAME(2,  8),
+    ANIMCMD_JUMP(0)
+};
+
+static const union AnimCmd *const sPikaAnims1[] = {
+    sPikaAnim1
+};
+static const union AnimCmd *const sPikaAnims2[] = {
+    sPikaAnim2
+};
+static const union AnimCmd *const sPikaAnims3[] = {
+    sPikaAnim3
+};
+
+extern const struct OamData gOamData_AffineOff_ObjNormal_32x32;
+extern const struct OamData gOamData_AffineOff_ObjNormal_32x16;
+extern const struct OamData gOamData_AffineOff_ObjNormal_16x8;
+
+static const struct SpriteTemplate sOakSpeech_PikaSpriteTemplates[3] = {
+    { 0x1001, 0x1001, &gOamData_AffineOff_ObjNormal_32x32, sPikaAnims1, NULL, gDummySpriteAffineAnimTable, SpriteCallbackDummy },
+    { 0x1002, 0x1001, &gOamData_AffineOff_ObjNormal_32x16, sPikaAnims2, NULL, gDummySpriteAffineAnimTable, SpriteCallbackDummy },
+    { 0x1003, 0x1001, &gOamData_AffineOff_ObjNormal_16x8, sPikaAnims3, NULL, gDummySpriteAffineAnimTable, SpriteCallbackDummy }
+};
+
+static void VBlankCB_NewGameOaksSpeech(void)
+{
+    LoadOam();
+    ProcessSpriteCopyRequests();
+    TransferPlttBuffer();
+}
+
+static void Task_ControlsInfo1(u8 taskId)
+{
+    switch (gMain.state)
+    {
+    case 0:
+        SetVBlankCallback(NULL);
+        SetHBlankCallback(NULL);
+        DmaFill16(3, 0, VRAM, VRAM_SIZE);
+        DmaFill32(3, 0, OAM, OAM_SIZE);
+        DmaFill16(3, 0, PLTT + sizeof(u16), PLTT_SIZE - 2);
+        ResetPaletteFade();
+        ScanlineEffect_Stop();
+        ResetSpriteData();
+        FreeAllSpritePalettes();
+        ResetTempTileDataBuffers();
+        // SetHelpContext(HELPCONTEXT_NEW_GAME);
+        break;
+    case 1:
+        sOakSpeechResources = AllocZeroed(sizeof(*sOakSpeechResources));
+        // OakSpeechNidoranFSetup(1, 1);
+        break;
+    case 2:
+        SetGpuReg(REG_OFFSET_WIN0H, 0);
+        SetGpuReg(REG_OFFSET_WIN0V, 0);
+        SetGpuReg(REG_OFFSET_WIN1H, 0);
+        SetGpuReg(REG_OFFSET_WIN1V, 0);
+        SetGpuReg(REG_OFFSET_WININ, 0);
+        SetGpuReg(REG_OFFSET_WINOUT, 0);
+        SetGpuReg(REG_OFFSET_BLDCNT, 0);
+        SetGpuReg(REG_OFFSET_BLDALPHA, 0);
+        SetGpuReg(REG_OFFSET_BLDY, 0);
+        break;
+    case 3:
+        ResetBgsAndClearDma3BusyFlags(0);
+        InitBgsFromTemplates(1, sBgTemplates, NELEMS(sBgTemplates));
+        SetBgTilemapBuffer(1, sOakSpeechResources->bg1TilemapBuffer);
+        SetBgTilemapBuffer(2, sOakSpeechResources->bg2TilemapBuffer);
+        ChangeBgX(1, 0, 0);
+        ChangeBgY(1, 0, 0);
+        ChangeBgX(2, 0, 0);
+        ChangeBgY(2, 0, 0);
+        gSpriteCoordOffsetX = 0;
+        gSpriteCoordOffsetY = 0;
+        break;
+    case 4:
+        gPaletteFade.bufferTransferDisabled = TRUE;
+        InitStandardTextBoxWindows();
+        ResetBg0();
+        Menu_LoadStdPalAt(0xD0);
+        LoadPalette(sHelpDocsPalette, 0x000, 0x080);
+        LoadPalette(stdpal_get(2) + 15, 0x000, 0x002);
+        break;
+    case 5:
+        sOakSpeechResources->textSpeed = GetTextSpeedSetting();
+        gTextFlags.canABSpeedUpPrint = TRUE;
+        DecompressAndCopyTileDataToVram(1, sOakSpeechGfx_GameStartHelpUI, 0, 0, 0);
+        break;
+    case 6:
+        if (FreeTempTileDataBuffersIfPossible())
+            return;
+        ClearDialogWindowAndFrame(0, 1);
+        FillBgTilemapBufferRect_Palette0(1, 0x0000,  0,  0, 32, 32);
+        CopyBgTilemapBufferToVram(1);
+        break;
+    case 7:
+        CreateTopBarWindowLoadPalette(0, 30, 0, 13, 0x1C4);
+        FillBgTilemapBufferRect_Palette0(1, 0xD00F,  0,  0, 30, 2);
+        FillBgTilemapBufferRect_Palette0(1, 0xD002,  0,  2, 30, 1);
+        FillBgTilemapBufferRect_Palette0(1, 0xD00E,  0, 19, 30, 1);
+        CreateHelpDocsPage1();
+        gPaletteFade.bufferTransferDisabled = FALSE;
+        gTasks[taskId].data[5] = CreateTextCursorSpriteForOakSpeech(0, 0xE6, 0x95, 0, 0);
+        BlendPalettes(0xFFFFFFFF, 0x10, 0x00);
+        break;
+    case 10:
+        BeginNormalPaletteFade(0xFFFFFFFF, 0, 16, 0, RGB_BLACK);
+        SetGpuReg(REG_OFFSET_DISPCNT, DISPCNT_MODE_0 | DISPCNT_OBJ_1D_MAP | DISPCNT_OBJ_ON);
+        ShowBg(0);
+        ShowBg(1);
+        SetVBlankCallback(VBlankCB_NewGameOaksSpeech);
+        PlayBGM(MUS_RG_NEW_GAME_INSTRUCT);
+        gTasks[taskId].func = Task_ControlsInfo2;
+        gMain.state = 0;
+        return;
+    }
+
+    gMain.state++;
+}
+
+static void CreateHelpDocsPage1(void)
+{
+    TopBarWindowPrintTwoStrings(gText_Controls, gText_Next, 0, 0, 1);
+    sOakSpeechResources->unk_0014[0] = AddWindow(sHelpDocsWindowTemplatePtrs[sOakSpeechResources->unk_0012]);
+    PutWindowTilemap(sOakSpeechResources->unk_0014[0]);
+    FillWindowPixelBuffer(sOakSpeechResources->unk_0014[0], 0x00);
+    AddTextPrinterParameterized4(sOakSpeechResources->unk_0014[0], 2, 2, 0, 1, 1, sTextColor_HelpSystem, 0, gText_NewGame_HelpDocs1);
+    CopyWindowToVram(sOakSpeechResources->unk_0014[0], COPYWIN_BOTH);
+    FillBgTilemapBufferRect_Palette0(1, 0x3000, 1, 3, 5, 16);
+    CopyBgTilemapBufferToVram(1);
+}
+
+static void Task_ControlsInfo1Repeat(u8 taskId)
+{
+    u8 i = 0;
+    u8 r7 = sOakSpeechResources->unk_0012 - 1;
+    if (sOakSpeechResources->unk_0012 == 0)
+    {
+        CreateHelpDocsPage1();
+    }
+    else
+    {
+        TopBarWindowPrintString(gText_NextBack, 0, 1);
+        for (i = 0; i < 3; i++)
+        {
+            sOakSpeechResources->unk_0014[i] = AddWindow(&sHelpDocsWindowTemplatePtrs[sOakSpeechResources->unk_0012][i]);
+            PutWindowTilemap(sOakSpeechResources->unk_0014[i]);
+            FillWindowPixelBuffer(sOakSpeechResources->unk_0014[i], 0x00);
+            AddTextPrinterParameterized4(sOakSpeechResources->unk_0014[i], 2, 6, 0, 1, 1, sTextColor_HelpSystem, 0, sHelpDocsPtrs[i + r7 * 3]);
+            CopyWindowToVram(sOakSpeechResources->unk_0014[i], COPYWIN_BOTH);
+        }
+
+        if (sOakSpeechResources->unk_0012 == 1)
+        {
+            CopyToBgTilemapBufferRect(1, sHelpDocsPage2Tilemap, 1, 3, 5, 16);
+        }
+        else
+        {
+            CopyToBgTilemapBufferRect(1, sHelpDocsPage3Tilemap, 1, 3, 5, 16);
+        }
+        CopyBgTilemapBufferToVram(1);
+    }
+    BeginNormalPaletteFade(0xFFFFDFFF, -1, 16, 0, stdpal_get(2)[15]);
+    gTasks[taskId].func = Task_ControlsInfo2;
+}
+
+static void Task_ControlsInfo2(u8 taskId)
+{
+    if (!gPaletteFade.active && JOY_NEW((A_BUTTON | B_BUTTON)))
+    {
+        if (JOY_NEW(A_BUTTON))
+        {
+            gTasks[taskId].data[15] = 1;
+            if (sOakSpeechResources->unk_0012 < 2)
+            {
+                BeginNormalPaletteFade(0xFFFFDFFF, -1, 0, 16, stdpal_get(2)[15]);
+            }
+        }
+        else
+        {
+            if (sOakSpeechResources->unk_0012 != 0)
+            {
+                gTasks[taskId].data[15] = -1;
+                BeginNormalPaletteFade(0xFFFFDFFF, -1, 0, 16, stdpal_get(2)[15]);
+            }
+            else
+                return;
+        }
+    }
+    else
+        return;
+    PlaySE(SE_SELECT);
+    gTasks[taskId].func = Task_ControlsInfo3;
+}
+
+static void Task_ControlsInfo3(u8 taskId)
+{
+    u8 r8 = 0;
+    u8 i;
+
+    if (!gPaletteFade.active)
+    {
+        switch (sOakSpeechResources->unk_0012) {
+        case 0:
+            r8 = 1;
+            break;
+        case 1:
+        case 2:
+            r8 = 3;
+            break;
+        }
+        sOakSpeechResources->unk_0012 += gTasks[taskId].data[15];
+        if (sOakSpeechResources->unk_0012 < 3)
+        {
+            for (i = 0; i < r8; i++)
+            {
+                FillWindowPixelBuffer(sOakSpeechResources->unk_0014[i], 0x00);
+                ClearWindowTilemap(sOakSpeechResources->unk_0014[i]);
+                CopyWindowToVram(sOakSpeechResources->unk_0014[i], COPYWIN_BOTH);
+                RemoveWindow(sOakSpeechResources->unk_0014[i]);
+                sOakSpeechResources->unk_0014[i] = 0;
+            }
+            gTasks[taskId].func = Task_ControlsInfo1Repeat;
+        }
+        else
+        {
+            BeginNormalPaletteFade(0xFFFFFFFF, 2, 0, 16, 0);
+            gTasks[taskId].func = Task_AdventureInfoInit;
+        }
+    }
+}
+
+static void Task_AdventureInfoInit(u8 taskId)
+{
+    u8 i = 0;
+
+    if (!gPaletteFade.active)
+    {
+        for (i = 0; i < 3; i++)
+        {
+            FillWindowPixelBuffer(sOakSpeechResources->unk_0014[i], 0x00);
+            ClearWindowTilemap(sOakSpeechResources->unk_0014[i]);
+            CopyWindowToVram(sOakSpeechResources->unk_0014[i], COPYWIN_BOTH);
+            RemoveWindow(sOakSpeechResources->unk_0014[i]);
+            sOakSpeechResources->unk_0014[i] = 0;
+        }
+        FillBgTilemapBufferRect_Palette0(1, 0x000, 0, 2, 30, 18);
+        CopyBgTilemapBufferToVram(1);
+        sub_8006398(gTasks[taskId].data[5]);
+        sOakSpeechResources->unk_0014[0] = RGB_BLACK;
+        LoadPalette(sOakSpeechResources->unk_0014, 0, 2);
+        gTasks[taskId].data[3] = 32;
+        gTasks[taskId].func = Task_AdventureInfoLoadState;
+    }
+}
+
+static void Task_AdventureInfoLoadState(u8 taskId)
+{
+    s16 * data = gTasks[taskId].data;
+    u32 sp14 = 0;
+
+    if (data[3] != 0)
+        data[3]--;
+    else
+    {
+        PlayBGM(MUS_RG_NEW_GAME_INTRO);
+        ClearTopBarWindow();
+        TopBarWindowPrintString(gText_Next, 0, 1);
+        sOakSpeechResources->unk_0008 = MallocAndDecompress(sNewGameAdventureIntroTilemap, &sp14);
+        CopyToBgTilemapBufferRect(1, sOakSpeechResources->unk_0008, 0, 2, 30, 19);
+        CopyBgTilemapBufferToVram(1);
+        Free(sOakSpeechResources->unk_0008);
+        sOakSpeechResources->unk_0008 = NULL;
+        data[14] = AddWindow(&sNewGameAdventureIntroWindowTemplates[0]);
+        PutWindowTilemap(data[14]);
+        FillWindowPixelBuffer(data[14], 0x00);
+        CopyWindowToVram(data[14], COPYWIN_BOTH);
+        sOakSpeechResources->unk_0012 = 0;
+        gMain.state = 0;
+        data[15] = 16;
+        AddTextPrinterParameterized4(data[14], 2, 3, 5, 1, 0, sTextColor_OakSpeech, 0, sNewGameAdventureIntroTextPointers[0]);
+        data[5] = CreateTextCursorSpriteForOakSpeech(0, 0xe2, 0x91, 0, 0);
+        gSprites[data[5]].oam.objMode = ST_OAM_OBJ_BLEND;
+        gSprites[data[5]].oam.priority = 0;
+        CreatePikaOrGrassPlatformSpriteAndLinkToCurrentTask(taskId, 0);
+        BeginNormalPaletteFade(0xFFFFFFFF, 2, 16, 0, 0);
+        gTasks[taskId].func = Task_AdventureInfo;
+    }
+}
+
+static void Task_AdventureInfo(u8 taskId)
+{
+    s16 * data = gTasks[taskId].data;
+    switch (gMain.state)
+    {
+    case 0:
+        if (!gPaletteFade.active)
+        {
+            SetGpuReg(REG_OFFSET_WIN0H, 0x00F0);
+            SetGpuReg(REG_OFFSET_WIN0V, 0x10A0);
+            SetGpuReg(REG_OFFSET_WININ, 0x003F);
+            SetGpuReg(REG_OFFSET_WINOUT, 0x001F);
+            SetGpuRegBits(REG_OFFSET_DISPCNT, DISPCNT_WIN0_ON);
+            gMain.state = 1;
+        }
+        break;
+    case 1:
+        if (JOY_NEW((A_BUTTON | B_BUTTON)))
+        {
+            if (JOY_NEW(A_BUTTON))
+            {
+                sOakSpeechResources->unk_0012++;
+            }
+            else if (sOakSpeechResources->unk_0012 != 0)
+            {
+                sOakSpeechResources->unk_0012--;
+            }
+            else
+            {
+                break;
+            }
+            PlaySE(SE_SELECT);
+            if (sOakSpeechResources->unk_0012 == 3)
+            {
+                gMain.state = 4;
+            }
+            else
+            {
+                SetGpuReg(REG_OFFSET_BLDCNT, BLDCNT_TGT1_BG0 | BLDCNT_EFFECT_BLEND | BLDCNT_TGT2_BG1);
+                SetGpuReg(REG_OFFSET_BLDALPHA, (16 - data[15]) | data[15]);
+                gMain.state++;
+            }
+        }
+        break;
+    case 2:
+        data[15] -= 2;
+        SetGpuReg(REG_OFFSET_BLDALPHA, ((16 - data[15]) << 8) | data[15]);
+        if (data[15] <= 0)
+        {
+            FillWindowPixelBuffer(data[14], 0x00);
+            AddTextPrinterParameterized4(data[14], 2, 3, 5, 1, 0, sTextColor_OakSpeech, 0, sNewGameAdventureIntroTextPointers[sOakSpeechResources->unk_0012]);
+            if (sOakSpeechResources->unk_0012 == 0)
+            {
+                ClearTopBarWindow();
+                TopBarWindowPrintString(gText_Next, 0, 1);
+            }
+            else
+            {
+                ClearTopBarWindow();
+                TopBarWindowPrintString(gText_NextBack, 0, 1);
+            }
+            gMain.state++;
+        }
+        break;
+    case 3:
+        data[15] += 2;
+        SetGpuReg(REG_OFFSET_BLDALPHA, ((16 - data[15]) << 8) | data[15]);
+        if (data[15] >= 16)
+        {
+            data[15] = 16;
+            SetGpuReg(REG_OFFSET_BLDCNT, 0);
+            SetGpuReg(REG_OFFSET_BLDALPHA, 0);
+            gMain.state = 1;
+        }
+        break;
+    case 4:
+        sub_8006398(gTasks[taskId].data[5]);
+        PlayBGM(MUS_RG_NEW_GAME_EXIT);
+        data[15] = 24;
+        gMain.state++;
+        break;
+    default:
+        if (data[15] != 0)
+            data[15]--;
+        else
+        {
+            gMain.state = 0;
+            sOakSpeechResources->unk_0012 = 0;
+            SetGpuReg(REG_OFFSET_WIN0H, 0);
+            SetGpuReg(REG_OFFSET_WIN0V, 0);
+            SetGpuReg(REG_OFFSET_WININ, 0);
+            SetGpuReg(REG_OFFSET_WINOUT, 0);
+            ClearGpuRegBits(REG_OFFSET_DISPCNT, DISPCNT_WIN0_ON);
+            BeginNormalPaletteFade(0xFFFFFFFF, 2, 0, 16, RGB_BLACK);
+            gTasks[taskId].func = Task_TransitionFromAdventureInfo;
+        }
+        break;
+    }
+}
+
+static void Task_TransitionFromAdventureInfo(u8 taskId)
+{
+    s16 * data = gTasks[taskId].data;
+
+    if (!gPaletteFade.active)
+    {
+        DestroyTopBarWindow();
+        FillWindowPixelBuffer(data[14], 0x00);
+        ClearWindowTilemap(data[14]);
+        CopyWindowToVram(data[14], COPYWIN_BOTH);
+        RemoveWindow(data[14]);
+        data[14] = 0;
+        FillBgTilemapBufferRect_Palette0(1, 0x000, 0, 0, 30, 20);
+        CopyBgTilemapBufferToVram(1);
+        DestroyLinkedPikaOrGrassPlatformSprites(taskId, 0);
+        data[3] = 80;
+        gTasks[taskId].func = Task_NewGameBirchSpeech_Init; // maybe?
+    }
+}
+
 static void Task_NewGameBirchSpeech_Init(u8 taskId)
 {
+    ResetBgsAndClearDma3BusyFlags(0);
     SetGpuReg(REG_OFFSET_DISPCNT, 0);
     SetGpuReg(REG_OFFSET_DISPCNT, DISPCNT_OBJ_ON | DISPCNT_OBJ_1D_MAP);
+    InitBgsFromTemplates(0, sMainMenuBgTemplates, 2);
     InitBgFromTemplate(&sBirchBgTemplate);
-    SetGpuReg(REG_OFFSET_WIN0H, 0);
-    SetGpuReg(REG_OFFSET_WIN0V, 0);
-    SetGpuReg(REG_OFFSET_WININ, 0);
-    SetGpuReg(REG_OFFSET_WINOUT, 0);
-    SetGpuReg(REG_OFFSET_BLDCNT, 0);
-    SetGpuReg(REG_OFFSET_BLDALPHA, 0);
-    SetGpuReg(REG_OFFSET_BLDY, 0);
+    SetGpuReg(REG_OFFSET_BG2CNT, 0);
+    SetGpuReg(REG_OFFSET_BG1CNT, 0);
+    SetGpuReg(REG_OFFSET_BG0CNT, 0);
+    SetGpuReg(REG_OFFSET_BG2HOFS, 0);
+    SetGpuReg(REG_OFFSET_BG2VOFS, 0);
+    SetGpuReg(REG_OFFSET_BG1HOFS, 0);
+    SetGpuReg(REG_OFFSET_BG1VOFS, 0);
+    SetGpuReg(REG_OFFSET_BG0HOFS, 0);
+    SetGpuReg(REG_OFFSET_BG0VOFS, 0);
+    DmaFill16(3, 0, VRAM, VRAM_SIZE);
+    DmaFill32(3, 0, OAM, OAM_SIZE);
+    DmaFill16(3, 0, PLTT, PLTT_SIZE);
+    ResetPaletteFade();
 
     LZ77UnCompVram(sBirchSpeechShadowGfx, (void*)VRAM);
     LZ77UnCompVram(sBirchSpeechBgMap, (void*)(BG_SCREEN_ADDR(7)));
@@ -2310,6 +3017,67 @@ static void Task_NewGameBirchSpeech_ReturnFromNamingScreenShowTextbox(u8 taskId)
     {
         NewGameBirchSpeech_ShowDialogueWindow(0, 1);
         gTasks[taskId].func = Task_NewGameBirchSpeech_SoItsPlayerName;
+    }
+}
+
+static void SpriteCB_PikaSync(struct Sprite * sprite)
+{
+    sprite->pos2.y = gSprites[sprite->data[0]].animCmdIndex;
+}
+
+static void CreatePikaOrGrassPlatformSpriteAndLinkToCurrentTask(u8 taskId, u8 state)
+{
+    u8 spriteId;
+    u8 i = 0;
+
+    switch (state)
+    {
+    case 0:
+        LoadCompressedSpriteSheet(&sOakSpeech_PikaSpriteSheets[0]);
+        LoadCompressedSpriteSheet(&sOakSpeech_PikaSpriteSheets[1]);
+        LoadCompressedSpriteSheet(&sOakSpeech_PikaSpriteSheets[2]);
+        LoadSpritePalette(&sOakSpeech_PikaSpritePal);
+        spriteId = CreateSprite(&sOakSpeech_PikaSpriteTemplates[0], 0x10, 0x11, 2);
+        gSprites[spriteId].oam.priority = 0;
+        gTasks[taskId].data[7] = spriteId;
+        spriteId = CreateSprite(&sOakSpeech_PikaSpriteTemplates[1], 0x10, 0x09, 3);
+        gSprites[spriteId].oam.priority = 0;
+        gSprites[spriteId].data[0] = gTasks[taskId].data[7];
+        gSprites[spriteId].callback = SpriteCB_PikaSync;
+        gTasks[taskId].data[8] = spriteId;
+        spriteId = CreateSprite(&sOakSpeech_PikaSpriteTemplates[2], 0x18, 0x0D, 1);
+        gSprites[spriteId].oam.priority = 0;
+        gSprites[spriteId].data[0] = gTasks[taskId].data[7];
+        gSprites[spriteId].callback = SpriteCB_PikaSync;
+        gTasks[taskId].data[9] = spriteId;
+        break;
+    case 1:
+        // this shouldn't happen.
+        break;
+    }
+}
+
+static void DestroyLinkedPikaOrGrassPlatformSprites(u8 taskId, u8 state)
+{
+    u8 i;
+
+    for (i = 0; i < 3; i++)
+    {
+        DestroySprite(&gSprites[gTasks[taskId].data[7 + i]]);
+    }
+
+    switch (state)
+    {
+    case 0:
+        FreeSpriteTilesByTag(0x1003);
+        FreeSpriteTilesByTag(0x1002);
+        FreeSpriteTilesByTag(0x1001);
+        FreeSpritePaletteByTag(0x1001);
+        break;
+    case 1:
+        FreeSpriteTilesByTag(0x1000);
+        FreeSpritePaletteByTag(0x1000);
+        break;
     }
 }
 

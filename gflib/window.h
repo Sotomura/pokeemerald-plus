@@ -43,6 +43,10 @@ struct Window
     u8 *tileData;
 };
 
+#define COPYWIN_MAP  1
+#define COPYWIN_GFX  2
+#define COPYWIN_BOTH 3
+
 bool16 InitWindows(const struct WindowTemplate *templates);
 u16 AddWindow(const struct WindowTemplate *template);
 int AddWindowWithoutTileMap(const struct WindowTemplate *template);

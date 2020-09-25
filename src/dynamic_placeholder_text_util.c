@@ -2,6 +2,7 @@
 #include "text.h"
 #include "dynamic_placeholder_text_util.h"
 #include "string_util.h"
+#include "sprite_text_colors.h"
 
 static EWRAM_DATA const u8 *sStringPointers[8] = {};
 
@@ -53,4 +54,15 @@ u8 *DynamicPlaceholderTextUtil_ExpandPlaceholders(u8 *dest, const u8 *src)
 const u8 *DynamicPlaceholderTextUtil_GetPlaceholderPtr(u8 idx)
 {
     return sStringPointers[idx];
+}
+
+u8 GetColorFromTextColorTable(u16 graphicId)
+{
+    u32 test = graphicId >> 1;
+    u32 shift = (graphicId & 1) << 2;
+
+    if (test >= NELEMS(sTextColorTable))
+        return 3;
+    else
+        return (sTextColorTable[graphicId >> 1] >> shift) & 0xF;
 }

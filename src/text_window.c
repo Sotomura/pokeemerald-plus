@@ -219,3 +219,28 @@ void sub_8098C6C(u8 bg, u16 destOffset, u8 palOffset)
     LoadBgTiles(bg, sWindowFrames[gSaveBlock2Ptr->optionsWindowFrameType].tiles, 0x120, destOffset);
     LoadPalette(GetWindowFrameTilesPal(gSaveBlock2Ptr->optionsWindowFrameType)->pal, palOffset, 0x20);
 }
+
+const u16 *stdpal_get(u8 id)
+{
+    switch (id)
+    {
+    case 0:
+        id = 0;
+        break;
+    case 1:
+        id = 0x10;
+        break;
+    case 2:
+        id = 0x20;
+        break;
+    case 3:
+        id = 0x30;
+        break;
+    case 4:
+    default:
+        id = 0x40;
+        break;
+    }
+
+    return (const u16 *)(sTextWindowPalettes) + id;
+}
