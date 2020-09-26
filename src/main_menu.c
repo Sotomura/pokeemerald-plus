@@ -1705,7 +1705,7 @@ static void Task_ControlsInfo1Repeat(u8 taskId)
             sOakSpeechResources->unk_0014[i] = AddWindow(&sHelpDocsWindowTemplatePtrs[sOakSpeechResources->unk_0012][i]);
             PutWindowTilemap(sOakSpeechResources->unk_0014[i]);
             FillWindowPixelBuffer(sOakSpeechResources->unk_0014[i], 0x00);
-            AddTextPrinterParameterized4(sOakSpeechResources->unk_0014[i], 2, 6, 0, 1, 1, sTextColor_HelpSystem, 0, sHelpDocsPtrs[i + r7 * 3]);
+            AddTextPrinterParameterized4(sOakSpeechResources->unk_0014[i], 1, 6, 0, 1, 1, sTextColor_HelpSystem, 0, sHelpDocsPtrs[i + r7 * 3]);
             CopyWindowToVram(sOakSpeechResources->unk_0014[i], COPYWIN_BOTH);
         }
 

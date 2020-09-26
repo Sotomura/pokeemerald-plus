@@ -503,7 +503,7 @@ void TopBarWindowPrintTwoStrings(const u8 *string, const u8 *string2, bool8 fgCo
             width = GetStringWidth(0, string2, 0);
             AddTextPrinterParameterized3(sTopBarWindowId, 0, -20 - width, 1, color, 0, string2);
         }
-        AddTextPrinterParameterized4(sTopBarWindowId, 2, 4, 1, 0, 0, color, 0, string);
+        AddTextPrinterParameterized4(sTopBarWindowId, 1, 4, 1, 0, 0, color, 0, string);
         if (copyToVram)
             CopyWindowToVram(sTopBarWindowId, COPYWIN_BOTH);
     }
