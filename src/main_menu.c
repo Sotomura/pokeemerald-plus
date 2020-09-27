@@ -1683,7 +1683,7 @@ static void CreateHelpDocsPage1(void)
     sOakSpeechResources->unk_0014[0] = AddWindow(sHelpDocsWindowTemplatePtrs[sOakSpeechResources->unk_0012]);
     PutWindowTilemap(sOakSpeechResources->unk_0014[0]);
     FillWindowPixelBuffer(sOakSpeechResources->unk_0014[0], 0x00);
-    AddTextPrinterParameterized4(sOakSpeechResources->unk_0014[0], 2, 2, 0, 1, 1, sTextColor_HelpSystem, 0, gText_NewGame_HelpDocs1);
+    AddTextPrinterParameterized4(sOakSpeechResources->unk_0014[0], 1, 2, 0, 1, 1, sTextColor_HelpSystem, 0, gText_NewGame_HelpDocs1);
     CopyWindowToVram(sOakSpeechResources->unk_0014[0], COPYWIN_BOTH);
     FillBgTilemapBufferRect_Palette0(1, 0x3000, 1, 3, 5, 16);
     CopyBgTilemapBufferToVram(1);
